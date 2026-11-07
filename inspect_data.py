@@ -5,6 +5,19 @@ import os
 import matplotlib.pyplot as plt
 DATA = "/virtual/wuhungma/data/"
 
+
+# Loads one photo and prints its size: 1080×1350 pixels with 3 colours each.
+# Loads the matching depth file.
+# The file stores whole numbers from 0 to 65535, which the script converts to mm (0–100).
+# It prints the min, max and median depth, counts the invalid pixels (value 0), and saves a coloured picture of the depth.
+# Loads pose.txt: 218 rows, one per frame, each holding 16 numbers.
+# It rearranges one row into a 4×4 matrix (transposing it, because the file stores it column by column).
+# That matrix gives the camera's rotation R and position t in the world.
+# It checks that R is a valid rotation.
+# Compares the camera position in frame 0 and frame 1 to see how far it moved.
+# Counts the frames.
+
+
 # ---------------- 1. RGB ----------------
 loaded_png = cv2.imread(DATA + "rgb/0000.png")
 
