@@ -74,10 +74,10 @@ T1 = get_T(pose, 1)
 P0 = T0[:3, 3]
 P1 = T1[:3, 3]
 print("T0:\n", T0)
-print("P1", P0)
-print("P2", P1)
+print("P0", P0)
+print("P1", P1)
 
-print("distance", np.linalg.norm(P2 - P1))
+print("distance", np.linalg.norm(P1 - P0))
 
 # ---------------- 4. FRAME COUNT ----------------
 print("frame count", len(os.listdir(DATA + "rgb")))
