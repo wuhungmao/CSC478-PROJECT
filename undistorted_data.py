@@ -3,8 +3,8 @@
 # Input : DATA/rgb/NNNN.png, DATA/depth/NNNN_depth.tiff, camera_intrinsics.txt
 # Output: OUT/rgb/NNNN.png, OUT/depth/NNNN_depth.tiff, OUT/K.txt
 #
-# NOTE: OpenCV's cv2.omnidir uses a DIFFERENT fisheye model (Mei). Do not use it here;
-#       you implement the Scaramuzza model yourself with NumPy.
+# The goal: the colonoscope uses a fisheye lens, but 3DGS only understands pinhole cameras (u = f·X/Z + cx, described by K). So you re-create every frame as if a pinhole camera had taken it, and save the K that describes it.
+
 
 # ---------------- 0. SETUP ----------------
 import cv2
