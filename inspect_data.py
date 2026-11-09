@@ -1,4 +1,9 @@
-# set the path
+# inspect_data.py
+# Sanity-check the C3VDv2 data formats before building on them. Findings:
+#   RGB   : 1080x1350x3 uint8 (BGR)
+#   Depth : uint16 0..65535 -> 0..100 mm; 0 = invalid, 100 = clamped "too far" (also invalid)
+#   Pose  : 218 rows x 16 numbers, stored COLUMN-major -> reshape(4,4) then transpose
+#           T = [R t; 0 1], t in mm, same world frame as coverage_mesh.obj
 import cv2
 import numpy as np
 import os
@@ -6,81 +11,48 @@ import matplotlib.pyplot as plt
 DATA = "/virtual/wuhungma/data/"
 
 
-# Loads one photo and prints its size: 1080×1350 pixels with 3 colours each.
-# Loads the matching depth file.
-# The file stores whole numbers from 0 to 65535, which the script converts to mm (0–100).
-# It prints the min, max and median depth, counts the invalid pixels (value 0), and saves a coloured picture of the depth.
-# Loads pose.txt: 218 rows, one per frame, each holding 16 numbers.
-# It rearranges one row into a 4×4 matrix (transposing it, because the file stores it column by column).
-# That matrix gives the camera's rotation R and position t in the world.
-# It checks that R is a valid rotation.
-# Compares the camera position in frame 0 and frame 1 to see how far it moved.
-# Counts the frames.
-
-
 # ---------------- 1. RGB ----------------
+# One photo → its shape and dtype (expect 1080x1350x3, uint8)
 loaded_png = cv2.imread(DATA + "rgb/0000.png")
-
-# print the shape and dtype
 print("loaded_png.shape", loaded_png.shape)
 print("loaded_png.dtype", loaded_png.dtype)
 
 # ---------------- 2. DEPTH ----------------
-# load the tiff file, and convert to mm
+# Raw depth TIFF (uint16) → depth in mm (float, 0..100)
 loaded_tiff = cv2.imread(DATA + "depth/0000_depth.tiff", cv2.IMREAD_UNCHANGED)
 mm = loaded_tiff.astype(np.float32) / 65535 * 100
 print("min", mm.min())
 print("max", mm.max())
 print("median", np.median(mm))
 
-# TODO: count invalid pixels
-#   - print the raw dtype of loaded_tiff (expect uint16)
-
-#   - count how many pixels in loaded_tiff equal 0, print it
+# Raw dtype + number of invalid (0) pixels
 print("dtype", loaded_tiff.dtype)
 print("num of pixels", (loaded_tiff == 0).sum())
 
-# TODO: save a depth picture
-#   - import matplotlib.pyplot as plt (top of file)
-#   - show mm as an image with a colormap
+# Depth in mm → coloured picture with a mm colorbar (depth_vis.png)
 plt.imshow(mm)
-#   - add a colorbar labelled "mm"
 plt.colorbar(label="mm")
-#   - save it to depth_vis.png, then open that png in VS Code
 plt.savefig("/student/wuhungma/CSC478/depth_vis.png")
 
 # ---------------- 3. POSES ----------------
-# load pose, and reshape row 0
+# pose.txt → (218, 16) array, one row per frame
 pose = np.loadtxt(os.path.join(DATA, "pose.txt"), delimiter=",")
-
 print("shape", pose.shape)   # expect (number_of_frames, 16)
 
-# TODO: turn row 0 into a 4x4 matrix
-#   - take the first row of pose (16 numbers)
-
-# TODO: how far does the camera move between frames?
-#   - build T for frame 0 and frame 1 (same steps as above)
+# get_T: row i of pose.txt → 4x4 camera pose T (transposed, since the file is column-major)
+#        also prints checks that R is a valid rotation: R @ R.T ≈ I, det(R) ≈ 1
 def get_T(pose, i):
     load_row = pose[i]
-    #   - reshape it to 4x4, call it T, print it
     load_row = load_row.reshape((4, 4))
-    #   - CHECK: is the bottom row [0 0 0 1]?
-    #       if not, the numbers were stored column by column -> transpose T
     if load_row[3, 0] != 0 or load_row[3, 1] != 0 or load_row[3, 2] != 0 or load_row[3, 3] != 1:
         print("Bottom row is not [0 0 0 1], transposing T")
         load_row = load_row.T
-    # TODO: sanity-check the rotation (Lecture 3)
-    #   - R = top-left 3x3 of T
     print("R:\n", load_row[:3, :3])
-    #   - print R @ R.T   (should be ~identity)
     print("R @ R.T:\n", load_row[:3, :3] @ load_row[:3, :3].T)
-    #   - print det(R)    (should be ~1)
     print("det(R):", np.linalg.det(load_row[:3, :3]))
     return load_row
-#   - camera position = last column, first 3 rows
-#   - print both positions, and the distance between them (np.linalg.norm)
-#   - units are mm; expect a small number
 
+# Poses of frame 0 and 1 → camera positions t → how far the camera moved (mm)
 T0 = get_T(pose, 0)
 T1 = get_T(pose, 1)
 
@@ -93,4 +65,5 @@ print("P1", P1)
 print("distance", np.linalg.norm(P1 - P0))
 
 # ---------------- 4. FRAME COUNT ----------------
+# rgb/ folder → number of frames (218)
 print("frame count", len(os.listdir(DATA + "rgb")))
